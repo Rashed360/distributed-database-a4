@@ -12,7 +12,7 @@ services:
       - mongodb
     environment:
       - POSTGRES_URL=postgres://user:password@postgres:5432/mydb
-      - MONGODB_URL=mongodb://user:password@mongodb:27017/mydb
+      - MONGODB_URL=mongodb://user:password@mongodb:27017/mydb?authSource=admin
     develop:
       watch:
         - path: ./package.json
