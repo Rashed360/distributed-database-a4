@@ -7,3 +7,41 @@ services:
       dockerfile: Dockerfile
     ports:
       - 3000:3000
+    depends_on:
+      - postgres
+      - mongodb
+    environment:
+      - POSTGRES_URL=postgres://user:password@postgres:5432/mydb
+      - MONGODB_URL=mongodb://user:password@mongodb:27017/mydb
+    develop:
+      watch:
+        - path: ./package.json
+          action: rebuild
+        - path: ./next.config.js
+          action: rebuild
+        - path: ./package-lock.json
+          action: rebuild
+        - path: .
+          target: /app
+          action: sync
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./db/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mongodb:
+    image: mongo:4.4
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - '27017:27017'
+    volumes:
+      - ./db/init-mongo.js:/docker-entrypoint-initdb.d/init.js
