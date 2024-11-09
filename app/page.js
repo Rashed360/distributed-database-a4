@@ -136,6 +136,16 @@ export default function App() {
 								</td>
 							</tr>
 						))}
+						<tr>
+							<td colSpan={6} className='p-0.5'>
+								<button
+									onClick={() => setData({ ...data, [tabsList[activeTab]]: null })}
+									className='px-2 text-sm border rounded bg-red-200 hover:bg-red-300'
+								>
+									Clear Cache
+								</button>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 			)
