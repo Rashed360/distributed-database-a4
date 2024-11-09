@@ -44,7 +44,7 @@ export async function mongo_updateEmployee(id, values = { name: '', email: '', s
 		.collection('employees')
 		.findOneAndUpdate({ _id: new ObjectId(id) }, { $set: values }, { returnDocument: 'after' })
 	await mongodb.close()
-	return result
+	return sanitizedResponse(result)
 }
 export async function mongo_deleteEmployee(id) {
 	await mongodb.connect()
@@ -53,5 +53,5 @@ export async function mongo_deleteEmployee(id) {
 		.collection('employees')
 		.findOneAndDelete({ _id: new ObjectId(id) })
 	await mongodb.close()
-	return result
+	return sanitizedResponse(result)
 }

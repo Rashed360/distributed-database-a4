@@ -13,7 +13,7 @@ import {
 } from './actions'
 
 export default function App() {
-	const tabsList = ['Postgres', 'MongoDB', 'Joined']
+	const tabsList = ['🛢️ Postgres', '🗃️ MongoDB', '🔗 Joined']
 	const [activeTab, setActiveTab] = useState(0)
 	const [appState, setAppState] = useState({ isEditing: false, currentDB: tabsList[0] })
 	const [data, setData] = useState({
@@ -63,43 +63,6 @@ export default function App() {
 		}
 	}, [data])
 
-	const renderTable = () => {
-		if (data[tabsList[activeTab]]) {
-			if (data[tabsList[activeTab]].length === 0) return <p>No Entries</p>
-			return (
-				<table className='w-full table-auto border-collapse border border-gray-300'>
-					<thead>
-						<tr>
-							{['Id', 'Name', 'Email', 'Salary', 'Active'].map(head => (
-								<th className='border border-gray-300 bg-gray-50' key={head}>
-									{head}
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{data[tabsList[activeTab]].map((row, idx) => (
-							<tr key={idx}>
-								<td className='py-1 border border-gray-300 bg-gray-50'>{row.id ? row.id : row._id}</td>
-								<td className='py-1 border border-gray-300 bg-gray-50'>{row.name}</td>
-								<td className='py-1 border border-gray-300 bg-gray-50'>{row.email}</td>
-								<td className='py-1 border border-gray-300 bg-gray-50'>{row.salary}</td>
-								<td className='py-1 border border-gray-300 bg-gray-50'>{row.active ? 'Yes' : 'No'}</td>
-								<td className='py-1 border border-gray-300 bg-gray-50'>E D</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			)
-		} else
-			return (
-				<p>
-					{isPostgresPending ? ' Postgres Loading...' : ''}
-					{isMongoDBPending ? ' MongoDB Loading...' : ''}
-				</p>
-			)
-	}
-
 	const onCreate = () => {
 		const { pk, ...values } = inputs
 		switch (appState.currentDB) {
@@ -125,20 +88,78 @@ export default function App() {
 		console.log({ DB: appState.currentDB, ...inputs })
 	}
 
-	const onDelete = () => {
-		console.log({ DB: appState.currentDB, ...inputs })
+	const onDelete = id => {
+		switch (appState.currentDB) {
+			case tabsList[0]:
+				postgres_deleteEmployee(id)
+				fetchPostgresData()
+				break
+			case tabsList[1]:
+				mongo_deleteEmployee(id)
+				fetchMongoDBData()
+				break
+		}
+	}
+
+	const renderTable = () => {
+		if (data[tabsList[activeTab]]) {
+			if (data[tabsList[activeTab]].length === 0) return <p>No Entries</p>
+			return (
+				<table className='w-full table-auto border-collapse border border-gray-300'>
+					<thead>
+						<tr>
+							{['Id', 'Name', 'Email', 'Salary', 'Active', 'Action'].map(head => (
+								<th className='border border-gray-300 bg-gray-50' key={head}>
+									{head}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{data[tabsList[activeTab]].map((row, idx) => (
+							<tr key={idx}>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.id ? row.id : row._id}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.name}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.email}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.salary}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.active ? 'Yes' : 'No'}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50 text-center'>
+									<button onClick={() => {}} className='opacity-80 hover:opacity-100'>
+										📝
+									</button>
+									<button
+										onClick={() => onDelete(row.id ? row.id : row._id)}
+										className='opacity-80 hover:opacity-100'
+									>
+										🗑️
+									</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			)
+		} else
+			return (
+				<p>
+					{isPostgresPending ? ' Postgres Loading...' : ''}
+					{isMongoDBPending ? ' MongoDB Loading...' : ''}
+				</p>
+			)
 	}
 
 	return (
 		<div className='mt-4 min-w-[800px] min-h-96 rounded-xl bg-white overflow-hidden shadow-xl'>
-			<h1 className='py-3 border-b border-gray-300 text-center text-lg font-bold'>SQL NoSQL Databases</h1>
-			<div className='h-full grid grid-cols-9'>
-				<div className='col-span-2 flex flex-col border-r border-gray-300'>
+			<h1 className='py-3 border-b border-gray-300 text-center text-lg font-bold'>
+				🛢️🗃️ SQL NoSQL Databases
+			</h1>
+			<div className='h-full flex'>
+				<div className='flex flex-col border-r border-gray-300'>
 					{tabsList.map((tab, key) => (
 						<button
 							key={key}
-							className={`p-2 border-b transition ${
-								activeTab === key ? 'bg-gray-100' : 'bg-transparent hover:bg-gray-200'
+							className={`p-2 min-w-32 border-b text-left transition ${
+								activeTab === key ? 'font-bold bg-gray-100' : 'bg-transparent hover:bg-gray-200'
 							}`}
 							onClick={() => {
 								setActiveTab(key)
@@ -149,15 +170,15 @@ export default function App() {
 						</button>
 					))}
 					<button
-						className={`p-2 border-b transition ${
-							activeTab === 3 ? 'bg-gray-100' : 'bg-transparent hover:bg-gray-200'
+						className={`p-2 min-w-32 border-b text-left transition ${
+							activeTab === 3 ? 'font-bold bg-gray-100' : 'bg-transparent hover:bg-gray-200'
 						}`}
 						onClick={() => setActiveTab(3)}
 					>
-						{appState.isEditing ? 'Update' : 'Add New'}
+						{appState.isEditing ? '📝 Update' : '➕ Add New'}
 					</button>
 				</div>
-				<div className='col-span-7 p-4'>
+				<div className='flex-1 p-4'>
 					{activeTab < 3 ? (
 						renderTable()
 					) : (
