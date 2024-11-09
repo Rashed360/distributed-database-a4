@@ -19,7 +19,13 @@ export async function postgres_addEmployee(values = { name: '', email: '', salar
 	)
 	return res.rows[0]
 }
-export async function postgres_updateEmployee(id, values = { name: '', email: '', salary: '', active: '' }) {}
+export async function postgres_updateEmployee(id, values = { name: '', email: '', salary: '', active: '' }) {
+	const res = await postgres.query(
+		'UPDATE employees SET name = $1, email = $2, salary = $3, active = $4 WHERE id = $5',
+		[values.name, values.email, values.salary, values.active, id]
+	)
+	return res.rows
+}
 export async function postgres_deleteEmployee(id) {
 	const res = await postgres.query('DELETE FROM employees WHERE id = $1', [id])
 	return res.rows

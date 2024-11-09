@@ -69,23 +69,34 @@ export default function App() {
 			case tabsList[0]:
 				postgres_addEmployee(values)
 				fetchPostgresData()
-				setActiveTab(0)
-				setInputs(initialInputs)
 				break
 			case tabsList[1]:
 				mongo_addEmployee(values)
 				fetchMongoDBData()
-				setActiveTab(1)
-				setInputs(initialInputs)
 				break
 			case tabsList[2]:
 				// TODO: Choose random 0/1, call onCreate() again
 				break
 		}
+		setActiveTab(tabsList.indexOf(appState.currentDB))
+		setInputs(initialInputs)
 	}
 
-	const onUpdate = e => {
-		console.log({ DB: appState.currentDB, ...inputs })
+	const onUpdate = () => {
+		const { pk, ...values } = inputs
+		switch (appState.currentDB) {
+			case tabsList[0]:
+				postgres_updateEmployee(pk, values)
+				fetchPostgresData()
+				break
+			case tabsList[1]:
+				mongo_updateEmployee(pk, values)
+				fetchMongoDBData()
+				break
+		}
+		setAppState({ ...appState, isEditing: false })
+		setActiveTab(tabsList.indexOf(appState.currentDB))
+		setInputs(initialInputs)
 	}
 
 	const onDelete = id => {
@@ -109,7 +120,7 @@ export default function App() {
 					<thead>
 						<tr>
 							{['Id', 'Name', 'Email', 'Salary', 'Active', 'Action'].map(head => (
-								<th className='border border-gray-300 bg-gray-50' key={head}>
+								<th className='border border-gray-300 bg-gray-200' key={head}>
 									{head}
 								</th>
 							))}
@@ -124,7 +135,15 @@ export default function App() {
 								<td className='py-1 border border-gray-300 bg-gray-50'>{row.salary}</td>
 								<td className='py-1 border border-gray-300 bg-gray-50'>{row.active ? 'Yes' : 'No'}</td>
 								<td className='py-1 border border-gray-300 bg-gray-50 text-center'>
-									<button onClick={() => {}} className='opacity-80 hover:opacity-100'>
+									<button
+										onClick={() => {
+											const { id, _id, ...rest } = row
+											setInputs({ pk: id ? id : _id, ...rest })
+											setAppState({ ...appState, isEditing: true })
+											setActiveTab(3)
+										}}
+										className='opacity-80 hover:opacity-100'
+									>
 										📝
 									</button>
 									<button
@@ -173,7 +192,7 @@ export default function App() {
 							}`}
 							onClick={() => {
 								setActiveTab(key)
-								setAppState({ currentDB: tab })
+								setAppState({ ...appState, currentDB: tab })
 							}}
 						>
 							{tab}
@@ -249,7 +268,7 @@ export default function App() {
 									onClick={() => {
 										setInputs(initialInputs)
 										if (!appState.isEditing) return
-										setAppState({ isEditing: false })
+										setAppState({ ...appState, isEditing: false })
 										setActiveTab(tabsList.indexOf(appState.currentDB))
 									}}
 									className='py-2 px-4 border rounded bg-red-200 hover:bg-red-100'
