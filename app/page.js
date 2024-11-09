@@ -13,81 +13,120 @@ import {
 } from './actions'
 
 export default function App() {
-	const [postgresData, setPostgresData] = useState(null)
-	const [mongoDBData, setMongoDBData] = useState(null)
+	const tabsList = ['Postgres', 'MongoDB', 'Joined']
+	const [activeTab, setActiveTab] = useState(0)
+	const [appState, setAppState] = useState({ isEditing: false, currentDB: tabsList[0] })
+	const [data, setData] = useState({
+		[tabsList[0]]: null,
+		[tabsList[1]]: null,
+		[tabsList[3]]: null,
+	})
 	const [isPostgresPending, startPostgresTransition] = useTransition()
 	const [isMongoDBPending, startMongoDBTransition] = useTransition()
-	const [formState, setFormState] = useState({ isEditing: false, currentDB: 'Postgres' })
-	const [tabs, setTabs] = useState({
-		active: 0,
-		list: ['Postgres', 'MongoDB', 'Join DBs', formState.isEditing ? 'Update' : 'Add New'],
-	})
-	const [inputs, setInputs] = useState({ pk: '', name: '', email: '', salary: '', active: false })
+	const initialInputs = { pk: '', name: '', email: '', salary: '', active: false }
+	const [inputs, setInputs] = useState(initialInputs)
 	const onInputChange = e => setInputs({ ...inputs, [e.target.name]: e.target.value })
 
 	const fetchPostgresData = () => {
-		if (postgresData) return
 		startPostgresTransition(async () => {
 			const res = await postgres_getEmployees()
-			setPostgresData(res)
+			setData({ ...data, [tabsList[0]]: res })
 		})
 	}
 
 	const fetchMongoDBData = () => {
-		if (mongoDBData) return
 		startMongoDBTransition(async () => {
 			const res = await mongo_getEmployees()
-			setMongoDBData(res)
+			setData({ ...data, [tabsList[1]]: res })
 		})
 	}
 
-	useEffect(() => fetchMongoDBData(), [postgresData])
-	useEffect(() => fetchPostgresData(), [mongoDBData])
+	useEffect(() => {
+		switch (appState.currentDB) {
+			case tabsList[0]:
+				if (data[tabsList[0]]) return
+				fetchPostgresData()
+				break
+			case tabsList[1]:
+				if (data[tabsList[1]]) return
+				fetchMongoDBData()
+				break
+			case tabsList[2]:
+				if (!data[tabsList[0]]) fetchPostgresData()
+				if (!data[tabsList[1]]) fetchMongoDBData()
+		}
+	}, [appState, data])
 
-	const renderTable = tableData => {
-		if (tableData) {
-			if (tableData.length === 0) return <p>No Entries</p>
+	useEffect(() => {
+		if (!data[tabsList[2]] && data[tabsList[1]] && data[tabsList[0]]) {
+			setData({ ...data, [tabsList[2]]: [...data[tabsList[0]], ...data[tabsList[1]]] })
+		}
+	}, [data])
+
+	const renderTable = () => {
+		if (data[tabsList[activeTab]]) {
+			if (data[tabsList[activeTab]].length === 0) return <p>No Entries</p>
 			return (
 				<table className='w-full table-auto border-collapse border border-gray-300'>
 					<thead>
 						<tr>
-							{Object.keys(tableData[0]).map(column => (
-								<th className='capitalize border border-gray-300 bg-gray-50' key={column}>
-									{column}
+							{['Id', 'Name', 'Email', 'Salary', 'Active'].map(head => (
+								<th className='border border-gray-300 bg-gray-50' key={head}>
+									{head}
 								</th>
 							))}
-							<th className='capitalize border border-gray-300 bg-gray-50'></th>
 						</tr>
 					</thead>
 					<tbody>
-						{tableData.map((row, idx) => (
+						{data[tabsList[activeTab]].map((row, idx) => (
 							<tr key={idx}>
-								{Object.keys(tableData[0]).map(column => (
-									<td className='p-1 border border-gray-300 bg-gray-50' key={column}>
-										{column === 'id' || column === '_id' ? (row.id ? row.id : row._id) : row[column]}
-									</td>
-								))}
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.id ? row.id : row._id}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.name}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.email}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.salary}</td>
+								<td className='py-1 border border-gray-300 bg-gray-50'>{row.active ? 'Yes' : 'No'}</td>
 								<td className='py-1 border border-gray-300 bg-gray-50'>E D</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
 			)
-		} else return <p>Loading...</p>
+		} else
+			return (
+				<p>
+					{isPostgresPending ? ' Postgres Loading...' : ''}
+					{isMongoDBPending ? ' MongoDB Loading...' : ''}
+				</p>
+			)
 	}
 
-	const onCreate = e => {
-		e.preventDefault()
-		console.log({ DB: formState.currentDB, ...inputs })
+	const onCreate = () => {
+		const { pk, ...values } = inputs
+		switch (appState.currentDB) {
+			case tabsList[0]:
+				postgres_addEmployee(values)
+				fetchPostgresData()
+				setActiveTab(0)
+				setInputs(initialInputs)
+				break
+			case tabsList[1]:
+				mongo_addEmployee(values)
+				fetchMongoDBData()
+				setActiveTab(1)
+				setInputs(initialInputs)
+				break
+			case tabsList[2]:
+				// TODO: Choose random 0/1, call onCreate() again
+				break
+		}
 	}
 
 	const onUpdate = e => {
-		e.preventDefault()
-		console.log({ DB: formState.currentDB, ...inputs })
+		console.log({ DB: appState.currentDB, ...inputs })
 	}
 
 	const onDelete = () => {
-		console.log({ DB: formState.currentDB, ...inputs })
+		console.log({ DB: appState.currentDB, ...inputs })
 	}
 
 	return (
@@ -95,40 +134,44 @@ export default function App() {
 			<h1 className='py-3 border-b border-gray-300 text-center text-lg font-bold'>SQL NoSQL Databases</h1>
 			<div className='h-full grid grid-cols-9'>
 				<div className='col-span-2 flex flex-col border-r border-gray-300'>
-					{tabs.list.map((tab, key) => (
+					{tabsList.map((tab, key) => (
 						<button
 							key={key}
 							className={`p-2 border-b transition ${
-								tabs.active === key ? 'bg-gray-100' : 'bg-transparent hover:bg-gray-200'
+								activeTab === key ? 'bg-gray-100' : 'bg-transparent hover:bg-gray-200'
 							}`}
 							onClick={() => {
-								setTabs({ ...tabs, active: key })
-								if (key < 2) setFormState({ currentDB: tab })
+								setActiveTab(key)
+								setAppState({ currentDB: tab })
 							}}
 						>
 							{tab}
 						</button>
 					))}
+					<button
+						className={`p-2 border-b transition ${
+							activeTab === 3 ? 'bg-gray-100' : 'bg-transparent hover:bg-gray-200'
+						}`}
+						onClick={() => setActiveTab(3)}
+					>
+						{appState.isEditing ? 'Update' : 'Add New'}
+					</button>
 				</div>
 				<div className='col-span-7 p-4'>
-					{tabs.active === 0 ? (
-						renderTable(postgresData)
-					) : tabs.active === 1 ? (
-						renderTable(mongoDBData)
-					) : tabs.active === 2 ? (
-						renderTable(
-							postgresData && mongoDBData && [...postgresData, ...mongoDBData].sort((a, b) => a.name - b.name)
-						)
+					{activeTab < 3 ? (
+						renderTable()
 					) : (
 						<div className='flex flex-col gap-2 select-none'>
-							<p>Add New Employee</p>
+							<p>{appState.isEditing ? 'Update' : 'Add New'} Employee</p>
 							<select
-								className='px-2 py-1 border rounded outline-none'
-								value={formState.currentDB}
-								onChange={e => setFormState({ ...formState, currentDB: e.target.value })}
+								className='px-2 py-1 border rounded outline-none disabled:opacity-50'
+								value={appState.currentDB}
+								onChange={e => setAppState({ ...appState, currentDB: e.target.value })}
+								disabled={appState.isEditing}
 							>
-								<option value='Postgres'>Postgres - SQL</option>
-								<option value='MongoDB'>MongoDB - NoSQL</option>
+								<option value={tabsList[0]}>Postgres - SQL</option>
+								<option value={tabsList[1]}>MongoDB - NoSQL</option>
+								<option value={tabsList[2]}>Random - AnyDB</option>
 							</select>
 							<input
 								className='px-2 py-1 border rounded outline-none'
@@ -165,20 +208,22 @@ export default function App() {
 							</div>
 							<div className='flex gap-2'>
 								<button
-									onClick={formState.isEditing ? onUpdate : onCreate}
-									className='py-2 px-4 border rounded text-white bg-gray-600 hover:bg-gray-500'
+									onClick={appState.isEditing ? onUpdate : onCreate}
+									className='py-2 px-4 border rounded text-white bg-gray-600 hover:bg-gray-500 disabled:bg-gray-300'
+									disabled={!inputs.name || !inputs.email || !inputs.salary}
 								>
-									{formState.isEditing ? 'Update' : 'Create'} Employee
+									{appState.isEditing ? 'Update' : 'Create'} Employee
 								</button>
 								<button
 									onClick={() => {
-										setInputs({ pk: '', name: '', email: '', salary: '', active: false })
-										if (!formState.isEditing) return
-										setFormState({ isEditing: false })
+										setInputs(initialInputs)
+										if (!appState.isEditing) return
+										setAppState({ isEditing: false })
+										setActiveTab(tabsList.indexOf(appState.currentDB))
 									}}
 									className='py-2 px-4 border rounded bg-red-200 hover:bg-red-100'
 								>
-									{formState.isEditing ? 'Cancel' : 'Reset'}
+									{appState.isEditing ? 'Cancel' : 'Reset'}
 								</button>
 							</div>
 						</div>
@@ -188,5 +233,3 @@ export default function App() {
 		</div>
 	)
 }
-
-// renderTable(tabs.list[tabs.active].data)
