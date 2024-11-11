@@ -15,11 +15,11 @@ import {
 export default function App() {
 	const tabsList = ['🛢️ Postgres', '🗃️ MongoDB', '🔗 Joined']
 	const [activeTab, setActiveTab] = useState(0)
-	const [appState, setAppState] = useState({ isEditing: false, currentDB: tabsList[0] })
+	const [appState, setAppState] = useState({ isEditing: false, shouldUpdate: false, currentDB: tabsList[0] })
 	const [data, setData] = useState({
 		[tabsList[0]]: null,
 		[tabsList[1]]: null,
-		[tabsList[3]]: null,
+		[tabsList[2]]: null,
 	})
 	const [isPostgresPending, startPostgresTransition] = useTransition()
 	const [isMongoDBPending, startMongoDBTransition] = useTransition()
@@ -58,10 +58,17 @@ export default function App() {
 	}, [appState, data])
 
 	useEffect(() => {
-		if (!data[tabsList[2]] && data[tabsList[1]] && data[tabsList[0]]) {
+		if (
+			appState.shouldUpdate ||
+			(!data[tabsList[2]] && data[tabsList[1]] && data[tabsList[0]]) ||
+			(data[tabsList[0]] &&
+				data[tabsList[1]] &&
+				data[tabsList[0]].length + data[tabsList[1]].length !== data[tabsList[2]].length)
+		) {
+			setAppState({ ...appState, shouldUpdate: false })
 			setData({ ...data, [tabsList[2]]: [...data[tabsList[0]], ...data[tabsList[1]]] })
 		}
-	}, [data])
+	}, [appState, data])
 
 	const onCreate = () => {
 		const { pk, ...values } = inputs
@@ -75,7 +82,13 @@ export default function App() {
 				fetchMongoDBData()
 				break
 			case tabsList[2]:
-				// TODO: Choose random 0/1, call onCreate() again
+				if (Math.floor(Math.random() * 2)) {
+					postgres_addEmployee(values)
+					fetchPostgresData()
+				} else {
+					mongo_addEmployee(values)
+					fetchMongoDBData()
+				}
 				break
 		}
 		setActiveTab(tabsList.indexOf(appState.currentDB))
@@ -84,6 +97,7 @@ export default function App() {
 
 	const onUpdate = () => {
 		const { pk, ...values } = inputs
+		const newAppState = appState
 		switch (appState.currentDB) {
 			case tabsList[0]:
 				postgres_updateEmployee(pk, values)
@@ -93,8 +107,19 @@ export default function App() {
 				mongo_updateEmployee(pk, values)
 				fetchMongoDBData()
 				break
+			case tabsList[2]:
+				if (pk.length > 8) {
+					mongo_updateEmployee(pk, values)
+					fetchMongoDBData()
+				} else {
+					postgres_updateEmployee(pk, values)
+					fetchPostgresData()
+				}
+				newAppState.shouldUpdate = true
+				break
 		}
-		setAppState({ ...appState, isEditing: false })
+		newAppState.isEditing = false
+		setAppState(newAppState)
 		setActiveTab(tabsList.indexOf(appState.currentDB))
 		setInputs(initialInputs)
 	}
@@ -109,6 +134,14 @@ export default function App() {
 				mongo_deleteEmployee(id)
 				fetchMongoDBData()
 				break
+			case tabsList[2]:
+				if (id.length > 8) {
+					mongo_deleteEmployee(id)
+					fetchMongoDBData()
+				} else {
+					postgres_deleteEmployee(id)
+					fetchPostgresData()
+				}
 		}
 	}
 
